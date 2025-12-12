@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Final Fight International — Official</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b0c; --card:#141416; --muted:#9aa0a6; --accent:#FFCC00;
+    --white:#ffffff; --radius:14px;
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:linear-gradient(#070707,#0d0d0e);color:var(--white);}
+  header{padding:36px 18px;text-align:center;background:#000;}
+  .brand{font-weight:800;font-size:34px;letter-spacing:0.2px;}
+  .sub{color:var(--muted);margin-top:6px;font-weight:500}
+  .hero{width:100%;max-height:420px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#111;padding:18px}
+  .hero img{width:100%;height:auto;max-height:420px;border-radius:12px;object-fit:cover}
+  .wrap{max-width:1100px;margin:28px auto;padding:0 14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:10px}
+  .card img{width:100%;height:220px;object-fit:cover;border-radius:10px}
+  .title{font-weight:700;font-size:18px}
+  .desc{color:var(--muted);font-size:14px;margin-top:6px}
+  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
+  .colors{display:flex;gap:8px;align-items:center}
+  .dot{width:16px;height:16px;border-radius:50%;}
+  .sizes{display:flex;gap:8px}
+  .btn{background:#111;border:1px solid #222;color:var(--white);padding:8px 14px;border-radius:10px;cursor:pointer}
+  .btn.accent{background:var(--accent);color:#000;font-weight:700}
+  .footer{padding:24px;text-align:center;color:var(--muted);font-size:14px}
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:50}
+  .modal .box{width:92%;max-width:900px;background:#0b0b0c;padding:16px;border-radius:12px}
+  .modal img{width:100%;height:auto;border-radius:8px}
+  .top-actions{display:flex;gap:10px;align-items:center}
+  @media(max-width:520px){ .hero img{border-radius:10px;height:260px;object-fit:cover} .card img{height:180px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Final Fight International</div>
+  <div class="sub">Boxing gear • Custom equipment • Worldwide shipping</div>
+</header>
+
+<div class="hero" id="hero">
+  <!-- hero image injected by JS -->
+  <img id="heroImg" alt="Final Fight International">
+</div>
+
+<div class="wrap">
+  <h2 style="margin:0 0 12px 0">Our Products</h2>
+  <div id="grid" class="grid"></div>
+</div>
+
+<div class="footer">
+  Instagram: @FinalFightInternational  •  WhatsApp: +92 346 6795946
+</div>
+
+<!-- modal preview -->
+<div id="modal" class="modal" onclick="closeModal()">
+  <div class="box" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:700">Preview</div>
+      <button onclick="closeModal()" class="btn">Close</button>
+    </div>
+    <img id="modalImg" src="">
+  </div>
+</div>
+
+<script>
+/*
+  This script:
+  - fetches repository contents via GitHub API
+  - displays images as product cards
+  - show hero image (hero.jpg if available, otherwise first image)
+  - owner/repo: change here if different
+*/
+
+const owner = 'Finalfightinternational';         // your GitHub username (case-sensitive)
+const repo  = 'Finalfightinternational-';        // your repo (from screenshots)
+const folderPath = ''; // root. If your images live in /images, set 'images'
+
+const allowedExt = ['.jpg','.jpeg','.png','.webp','.gif'];
+
+async function listRepoFiles(path=''){
+  const api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const res = await fetch(api);
+  if(!res.ok) {
+    console.error('GitHub API error', res.status, await res.text());
+    return [];
+  }
+  const data = await res.json();
+  return data;
+}
+
+function isImageFile(name){
+  const n = name.toLowerCase();
+  return allowedExt.some(ext => n.endsWith(ext));
+}
+
+function niceTitle(name){
+  // remove extension and underscores/dashes
+  return name.replace(/\.[^/.]+$/, '').replace(/[_\-]/g,' ').replace(/\d{6,}/,'').trim();
+}
+
+function sampleColorsFromName(name){
+  // cheap heuristic: if filename contains r/g/b/blk write colors; otherwise placeholders
+  const n = name.toLowerCase();
+  const colors = [];
+  if(/red|r_/i.test(n)) colors.push('#d64545');
+  if(/black|blk|b_/i.test(n)) colors.push('#111');
+  if(/white|w_/i.test(n)) colors.push('#eee');
+  if(/blue|blu|sky/i.test(n)) colors.push('#3b82f6');
+  if(colors.length===0) colors.push('#111', '#d64545', '#f1c40f');
+  return colors;
+}
+
+function createCard(imgUrl, filename){
+  const grid = document.getElementById('grid');
+  const card = document.createElement('div'); card.className='card';
+  card.innerHTML = `
+    <img loading="lazy" src="${imgUrl}" alt="${filename}">
+    <div class="title">${niceTitle(filename)}</div>
+    <div class="desc">High-quality boxing product — DM to order.</div>
+    <div class="meta">
+      <div class="colors" id="c-${filename}"></div>
+      <div class="sizes">S • M • L • XL</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" onclick="preview('${imgUrl}')">Preview</button>
+      <button class="btn accent" onclick="order('${filename}')">Order</button>
+    </div>
+  `;
+  grid.appendChild(card);
+  // fill color dots
+  const colors = sampleColorsFromName(filename);
+  const container = card.querySelector(`#c-${filename}`);
+  colors.forEach(c => {
+    const dot = document.createElement('div'); dot.className='dot'; dot.style.background=c;
+    container.appendChild(dot);
+  });
+}
+
+// preview modal
+function preview(url){
+  document.getElementById('modalImg').src = url;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal(){ document.getElementById('modal').style.display='none'; }
+
+// order action (opens WhatsApp chat)
+function order(filename){
+  const phone = '+923466795946';
+  const text = encodeURIComponent(`Hi, I want to order: ${niceTitle(filename)} from Final Fight International.`);
+  window.open(`https://wa.me/${phone.replace(/\D/g,'')}?text=${text}`, '_blank');
+}
+
+async function init(){
+  const contents = await listRepoFiles(folderPath);
+  if(!Array.isArray(contents)) return;
+
+  // pick images
+  const images = contents.filter(item => item.type==='file' && isImageFile(item.name));
+  if(images.length===0){
+    document.getElementById('grid').innerHTML = '<div style="color:var(--muted)">No images found in repo root. Upload images to the repository or change folderPath in the script.</div>';
+    return;
+  }
+
+  // set hero: look for hero.jpg or first image
+  const heroFile = images.find(i => i.name.toLowerCase()==='hero.jpg');
+  const heroUrl = (heroFile ? heroFile.download_url : images[0].download_url);
+  document.getElementById('heroImg').src = heroUrl;
+
+  // create cards (we will sort so newest appears first)
+  images.sort((a,b)=> (b.name.localeCompare(a.name)));
+  images.forEach(img=>{
+    createCard(img.download_url, img.name);
+  });
+}
+
+// start
+init().catch(e=>{ console.error(e); document.getElementById('grid').innerHTML='<div style="color:#f88">Error loading images. Check repo owner/name and that the repo is public.</div>';});
+</script>
+</body>
+</html>
